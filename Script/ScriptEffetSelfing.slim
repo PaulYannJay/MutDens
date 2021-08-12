@@ -129,7 +129,7 @@ initialize() {
 		//		dN_False=sum(sim.mutationFrequencies(NULL, Sub_N)>0.49)+dN;
 				//}
     		meanFitness=mean(p1.cachedFitness(p1.individuals.index));//Mean Fitness of sample without inversion
-			line=paste(c(sim.generation,deb,fin,N,mu,r,h,s, rep, S_N, DAF_N,Mut_N,pi_N,dN,meanFitness,S_S,DAF_S,Mut_S,pi_S,dS,meanFitness), sep="\t");
+			line=paste(c(sim.generation,deb,fin,N,mu,r,h,s,Seld, rep, S_N, DAF_N,Mut_N,pi_N,dN,meanFitness,S_S,DAF_S,Mut_S,pi_S,dS,meanFitness), sep="\t");
 			writeFile(file, line, append=T);
 			}
 		}
