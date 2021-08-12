@@ -1,0 +1,142 @@
+// set up a simple neutral simulation
+initialize() {
+	// set the overall mutation rate
+	initializeMutationRate(mu);
+	// m1 mutation type: neutral
+	initializeMutationType("m10", h, "f",s ); //mutation sampled among a gamma dsitribution
+	initializeMutationType("m11", h, "f",0 ); //mutation sampled among a gamma dsitribution
+	initializeMutationType("m2", 0.5, "f", 0);// mutation defining mating type locus 1
+	initializeMutationType("m4", 0.5, "f", 0);// mutation defining inversion 1
+
+	// g1 genomic element type: uses m1 for all mutations
+	initializeGenomicElementType("g1", c(m10, m11),c(1,1)); //mutation with different dominance appear with equal probability
+
+	// uniform chromosome of length 200Mb for two chromosome
+	initializeGenomicElement(g1, 0,99999999);
+
+
+	// uniform recombination along two chromosomes
+	rates=c(r);//Two chromosomes with R=1e-8	
+    ends=c(99999999); //Two chromosome of size 100000000	
+	initializeRecombinationRate(rates, ends);
+}
+// create a population of 500 individuals
+1 {
+	sim.addSubpop("p1", N);
+	defineConstant("simID", getSeed());
+	p1.setSelfingRate(Self);
+}
+
+//1 late() { //using late() just to avoid drift the first generation
+//	sim.subpopulations.individuals.genome1.addNewDrawnMutation(m2, 500000); // Introduce in this population the sex mutation at locus 1. 
+//	}
+//
+//2:115000	modifyChild(p1) { //simulating the meeting between two gamete and fecondation depand on their genotype
+//	Gamete1MT = childGenome1.containsMarkerMutation(m2, 500000, returnMutation=T); //Checking the MT of the 1 gamete for the locus 1
+//	Gamete2MT = childGenome2.containsMarkerMutation(m2, 500000, returnMutation=T); //Checking the MT of the 1 gamete for the locus 1
+//	if (identical(Gamete1MT, Gamete2MT)){ //check the difference a the first locus
+//			return F;} 
+//	return T;
+//}
+
+2:115000 early(){
+	if( sim.generation % 100 == 0) //Compute stat for Synonyme (S) and non-synonyme (N) mutations
+		{
+		catn(sim.generation);
+		file=paste(c("../Output/N=", N, "_h=", h, "_s=", s, "_r=", r, "_u=",mu ,"_S_DAF_Pi_Rep_SelfEffect.txt"), sep="");
+		SizeWind=500000;
+		Nwindow=10000000/SizeWind;
+		for (Window in 1:Nwindow)
+			{
+			fin=Window*SizeWind;
+			deb=fin-SizeWind+1;
+			Mut_N=sim.mutationsOfType(m10).position;
+			S_N=sum((Mut_N>=deb) & (Mut_N<=fin));//Number of polymorphic site.
+			Mut_S=sim.mutationsOfType(m11).position;
+			S_S=sum((Mut_S>=deb) & (Mut_S<=fin));//Number of polymorphic site.
+			DAFVec_N=c();//Vector containing, for each individual, the mean DAF 
+			MutVec_N=c();//Vector containing, for each individual, the number of mutation it has
+			SumPi_N=0.0;// the sum of Pi. I could have use a vector as above, this is just another way, to try (more efficient that storing a vector ??);
+			DAFVec_S=c();//Vector containing, for each individual, the mean DAF 
+			MutVec_S=c();//Vector containing, for each individual, the number of mutation it has
+			SumPi_S=0.0;// the sum of Pi. I could have use a vector as above, this is just another way, to try (more efficient that storing a vector ??);
+			if(S_N>0)//If this region contain a mutation
+				{
+				for (i in p1.individuals)
+					{
+					//N
+					Muti_N=unique(i.genomes.mutationsOfType(m10).position);
+					NMuti_N=sum((Muti_N >= deb) & (Muti_N<=fin));
+					MutVec_N=c(MutVec_N,NMuti_N);
+					DAFi_N=NMuti_N/(2*S_N);
+					DAFVec_N=c(DAFVec_N, DAFi_N);
+					muts0_N = i.genomes[0].mutationsOfType(m10);//Mutation on chrom1
+					muts1_N = i.genomes[1].mutationsOfType(m10);//Mut on chrom2
+					muts0_N = muts0_N[((muts0_N.position >= deb) & (muts0_N.position <= fin))];//Subset for the region of interest
+					muts1_N = muts1_N[((muts1_N.position >= deb) & (muts1_N.position <= fin))];//Subset for the region of interest
+					shared_count_N = sum(match(muts0_N, muts1_N) >= 0);//number of position where the mutation are the same -> Homozygous position
+					unshared_count_N = muts0_N.size() + muts1_N.size() - 2 * shared_count_N; // Number of heterozygous position
+					pi_ind_N = unshared_count_N / (fin - deb + 1);//Proportion of heterozygous site
+					SumPi_N = SumPi_N + pi_ind_N;
+					}
+				DAF_N=mean(DAFVec_N);
+				Mut_N=mean(MutVec_N);
+				pi_N=SumPi_N / p1.individuals.size();
+				}
+			else
+				{
+				DAF_N=0;
+				Mut_N=0;
+				pi_N=0;
+				}
+			if(S_S>0)//If this region contain a mutation
+				{
+				for (i in p1.individuals)
+					{
+					Muti_S=unique(i.genomes.mutationsOfType(m11).position);
+					NMuti_S=sum((Muti_S >= deb) & (Muti_S<=fin));
+					MutVec_S=c(MutVec_S,NMuti_S);
+					DAFi_S=NMuti_S/(2*S_S);
+					DAFVec_S=c(DAFVec_S, DAFi_S);
+					muts0_S = i.genomes[0].mutationsOfType(m11);//Mutation on chrom1
+					muts1_S = i.genomes[1].mutationsOfType(m11);//Mut on chrom2
+					muts0_S = muts0_S[((muts0_S.position >= deb) & (muts0_S.position <= fin))];//Subset for the region of interest
+					muts1_S = muts1_S[((muts1_S.position >= deb) & (muts1_S.position <= fin))];//Subset for the region of interest
+					shared_count_S = sum(match(muts0_S, muts1_S) >= 0);//number of position where the mutation are the same -> Homozygous position
+					unshared_count_S = muts0_S.size() + muts1_S.size() - 2 * shared_count_S; // Number of heterozygous position
+					pi_ind_S = unshared_count_S / (fin - deb + 1);//Proportion of heterozygous site
+					SumPi_S = SumPi_S + pi_ind_S;
+					}
+				DAF_S=mean(DAFVec_S);
+				Mut_S=mean(MutVec_S);
+				pi_S=SumPi_S / p1.individuals.size();
+				}
+			else
+				{
+				DAF_S=0;
+				Mut_S=0;
+				pi_S=0;
+				}
+				SubPos=sim.substitutions.position;
+				SubWind=sim.substitutions[((SubPos>=deb) & (SubPos<=fin))].mutationType; //Number of mutation fixed in this window
+				dN=sum(SubWind == m10);
+				dS=sum(SubWind == m11);
+		//		Sub_Spos=sim.mutationsOfType(m11).position;
+		//		Sub_S=sim.mutationsOfType(m11)[((Sub_Spos>=deb)&(Sub_Spos<=fin))];
+		//		dS_False=sum(sim.mutationFrequencies(NULL, Sub_S)>0.49)+dS;//for the MT loci, a mutation is fixed when it reach 0.5 in freq ! To not introduce a bias, also calculate this for region not in MT
+		//		Sub_Npos=sim.mutationsOfType(m10).position;
+		//		Sub_N=sim.mutationsOfType(m10)[((Sub_Npos>=deb)&(Sub_Npos<=fin))];
+		//		dN_False=sum(sim.mutationFrequencies(NULL, Sub_N)>0.49)+dN;
+				//}
+    		meanFitness=mean(p1.cachedFitness(p1.individuals.index));//Mean Fitness of sample without inversion
+			line=paste(c(sim.generation,deb,fin,N,mu,r,h,s, rep, S_N, DAF_N,Mut_N,pi_N,dN,meanFitness,S_S,DAF_S,Mut_S,pi_S,dS,meanFitness), sep="\t");
+			writeFile(file, line, append=T);
+			}
+		}
+}
+
+15000 late() {
+sim.outputFull("../Output/slim_g15000_1MChrom_N=" + N + "_r=" + r + "_u=" + mu + "_s=" + s + "_h=" + h + "_" + simID + ".txt");
+sim.simulationFinished();
+}
+
